@@ -59,6 +59,30 @@ impl Prompt {
             role_play: None,
         })
     }
+    pub fn replace_messages<F>(self, f: F) -> Self
+    where
+        F: Fn(String) -> String,
+    {
+        match self {
+            Prompt::Ask(ask) => Self::Ask(Ask {
+                question: f(ask.question),
+                role_play: ask.role_play,
+            }),
+            Prompt::Conversation(conversation) => {
+                let mut new_conversation = Conversation::new();
+                for message in conversation.messages {
+                    match message.role {
+                        Role::AI => new_conversation.add_ai_message(&f(message.content)),
+                        Role::User => new_conversation.add_user_message(&f(message.content)),
+                        Role::RolePlay => {
+                            new_conversation.add_role_play_message(&f(message.content))
+                        }
+                    }
+                }
+                Self::Conversation(new_conversation)
+            }
+        }
+    }
     const SPLIT_CHARACTERS: [char; 6] = ['.', '!', '?', '。', '！', '？'];
     // Split a large message by maximum length
     // base_message: message to prepend
@@ -194,6 +218,18 @@ impl Conversation {
 mod tests {
     use super::*;
 
+    #[test]
+    fn prompt_can_replace_by_function() {
+        let prompt = Prompt::ask("What is the meaning of life?");
+        let prompt = prompt.replace_messages(|q| q.to_uppercase());
+        match prompt {
+            Prompt::Ask(ask) => {
+                assert_eq!(ask.question, "WHAT IS THE MEANING OF LIFE?");
+                assert_eq!(ask.role_play, None);
+            }
+            _ => panic!("Unexpected prompt type"),
+        }
+    }
     #[test]
     fn split_by_max_length_should_split_by_max_length_and_period() {
         let base_message = "Please translate next sentence: ";
