@@ -206,3 +206,45 @@ gai_engine!(
     Claude35Sonnet:ClaudeMessageClient,
     Claude3Sonnet:ClaudeMessageClient
 );
+
+fn replace_paths_to_content(message: String) -> String {
+    let Ok(re) = regex::Regex::new(r"`([^`]+)`") else {
+        return message.to_string();
+    };
+    re.captures_iter(message.as_str())
+        .fold(message.to_string(), |mut message, cap| {
+            let Some(path) = cap.get(1) else {
+                return message;
+            };
+            let Ok(content) = std::fs::read_to_string(path.as_str()) else {
+                return message;
+            };
+            message = message.replace(path.as_str(), format!("``{}``", content).as_str());
+            message
+        })
+}
+#[cfg(test)]
+mod tests {
+    use std::{
+        fs::{remove_file, File},
+        io::Write,
+    };
+
+    use super::*;
+    #[test]
+    fn replace_content() {
+        let mut f = File::create("test.txt").unwrap();
+        f.write_all(b"test").unwrap();
+        let mut f = File::create("test2.txt").unwrap();
+        f.write_all(b"test2").unwrap();
+
+        let message = "review following code, `test.txt` and `test2.txt`";
+
+        let sut = replace_paths_to_content(message.to_string());
+
+        remove_file("test.txt").unwrap();
+        remove_file("test2.txt").unwrap();
+
+        assert_eq!(sut, "review following code, ```test``` and ```test2```");
+    }
+}

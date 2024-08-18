@@ -14,3 +14,4 @@ tracing = "0.1.26"
 tracing-subscriber = {version="0.3", features=["env-filter"]}
 anyhow = { version = "1.0.70", features = ["backtrace", "std"] }
 clap={version="4.0",features=["derive"]}
+regex = "1.5"
