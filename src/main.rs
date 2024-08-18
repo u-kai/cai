@@ -86,8 +86,12 @@ impl Cli {
         let ai = GAIEngines::from_str(&engine, key);
         let prompt = if role_play.is_some() {
             Prompt::ask_with_role_play(question.as_str(), role_play.unwrap().as_str())
+                .replace_messages(replace_remote_path_to_content)
+                .replace_messages(replace_paths_to_content)
         } else {
             Prompt::ask(question.as_str())
+                .replace_messages(replace_remote_path_to_content)
+                .replace_messages(replace_paths_to_content)
         };
         let mut printer = Printer::new();
         ai.run_mut(&mut printer, prompt).await
@@ -208,7 +212,7 @@ gai_engine!(
 );
 
 fn replace_paths_to_content(message: String) -> String {
-    let Ok(re) = regex::Regex::new(r"`([^`]+)`") else {
+    let Ok(re) = regex::Regex::new(r"\{([^}]+)\}") else {
         return message.to_string();
     };
     re.captures_iter(message.as_str())
@@ -219,10 +223,33 @@ fn replace_paths_to_content(message: String) -> String {
             let Ok(content) = std::fs::read_to_string(path.as_str()) else {
                 return message;
             };
-            message = message.replace(path.as_str(), format!("``{}``", content).as_str());
+            let path = format!("{{{}}}", path.as_str());
+
+            message = message.replace(&path, format!("```{}```", content).as_str());
             message
         })
 }
+
+fn replace_remote_path_to_content(message: String) -> String {
+    let Ok(re) = regex::Regex::new(r"\[([^}]+)\]") else {
+        return message.to_string();
+    };
+    re.captures_iter(message.as_str())
+        .fold(message.to_string(), |mut message, cap| {
+            let Some(path) = cap.get(1) else {
+                return message;
+            };
+            let Ok(content) = reqwest::blocking::get(path.as_str()) else {
+                return message;
+            };
+            let content = content.text().unwrap_or_else(|_| "".to_string());
+            let path = format!("[{}]", path.as_str());
+
+            message = message.replace(&path, format!("{}", content).as_str());
+            message
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use std::{
@@ -238,7 +265,7 @@ mod tests {
         let mut f = File::create("test2.txt").unwrap();
         f.write_all(b"test2").unwrap();
 
-        let message = "review following code, `test.txt` and `test2.txt`";
+        let message = "review following code, {test.txt} and {test2.txt}";
 
         let sut = replace_paths_to_content(message.to_string());
 
