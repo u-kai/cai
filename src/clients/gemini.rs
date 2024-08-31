@@ -214,7 +214,7 @@ mod tests {
     use super::*;
     #[ignore]
     #[tokio::test]
-    async fn request_to_genemi() {
+    async fn request_to_gemini() {
         tracing_subscriber::registry()
             .with(
                 tracing_subscriber::EnvFilter::try_from_default_env()

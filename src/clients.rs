@@ -1,5 +1,5 @@
 pub mod claude;
-pub mod genemi;
+pub mod gemini;
 pub mod openai;
 
 #[cfg(test)]

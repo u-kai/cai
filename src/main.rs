@@ -1,7 +1,7 @@
 use anyhow::Context;
 use cai::{
     clients::{
-        claude::ClaudeMessageClient, genemi::GeminiGenerateContent, openai::ChatCompletionsClient,
+        claude::ClaudeMessageClient, gemini::GeminiGenerateContent, openai::ChatCompletionsClient,
     },
     handlers::printer::Printer,
     AIError, Conversation, GenerativeAIInterface, MutHandler, Prompt,
