@@ -84,44 +84,6 @@ impl Prompt {
             }
         }
     }
-    const SPLIT_CHARACTERS: [char; 6] = ['.', '!', '?', '。', '！', '？'];
-    // Split a large message by maximum length
-    // base_message: message to prepend
-    // message: Message to be split
-    // max_length: Maximum length of the message
-    // Basically, this is used when the instruction content, such as a translation request, can be interrupted without any issues.
-    // It's preferable not to use this function when there is only one message (e.g., for code reviews).
-    // If the context of the premise is important, include it in the base_message.
-    pub fn split_by_max_length(base_message: &str, message: &str, max_length: usize) -> Vec<Self> {
-        message
-            .split(|c| Self::SPLIT_CHARACTERS.contains(&c))
-            .fold(vec![], |mut acc, sentence| {
-                if sentence.is_empty() {
-                    return acc;
-                }
-                if acc.is_empty() {
-                    acc.push(Ask {
-                        question: format!("{}{}.", base_message, sentence),
-                        role_play: None,
-                    })
-                } else {
-                    let last = acc.last_mut().unwrap();
-                    // 1 is for the period.
-                    if last.question.len() + sentence.len() + 1 <= max_length {
-                        last.question.push_str(&format!("{}.", sentence));
-                    } else {
-                        acc.push(Ask {
-                            question: format!("{}{}.", base_message, sentence),
-                            role_play: None,
-                        });
-                    }
-                }
-                acc
-            })
-            .into_iter()
-            .map(|ask| Self::Ask(ask))
-            .collect()
-    }
     pub fn ask_with_role_play(question: &str, role_play: &str) -> Self {
         Self::Ask(Ask {
             question: question.to_string(),
@@ -230,27 +192,6 @@ mod tests {
             }
             _ => panic!("Unexpected prompt type"),
         }
-    }
-    #[test]
-    fn split_by_max_length_should_split_by_max_length_and_period() {
-        let base_message = "Please translate next sentence: ";
-        let big_message_src = "I was foo and bar.";
-        let big_message = big_message_src.repeat(100);
-        // This value is less than or equal to the total number of characters in base_message and big_message
-        // and also less than or equal to twice the total number of characters.
-        // By doing this, the concatenated value of base_message and big_message becomes a single prompt.
-        let max_length = 60;
-
-        let prompts = Prompt::split_by_max_length(base_message, &big_message, max_length);
-
-        assert_eq!(prompts.len(), 100);
-        prompts.iter().for_each(|prompt| match prompt {
-            Prompt::Ask(ask) => {
-                assert_eq!(ask.question, format!("{}{}", base_message, big_message_src));
-                assert_eq!(ask.role_play, None);
-            }
-            _ => panic!("Unexpected prompt type"),
-        });
     }
     #[test]
     fn conversation() {

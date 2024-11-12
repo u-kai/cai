@@ -6,6 +6,9 @@ pub async fn translate<AI: GenerativeAIInterface>(
 ) -> Result<TranslateResult, AIError> {
     let mut recorder = Recorder::new();
     let prompts = request.to_prompts();
+    for prompt in prompts.iter() {
+        ai.request_mut(prompt.clone(), &mut recorder).await?;
+    }
     ai.request_mut(prompts[0].clone(), &mut recorder).await?;
     Ok(TranslateResult {
         from: request,
