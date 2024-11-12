@@ -4,7 +4,8 @@ use cai::{
         claude::ClaudeMessageClient, gemini::GeminiGenerateContent, openai::ChatCompletionsClient,
     },
     handlers::printer::Printer,
-    AIError, Conversation, GenerativeAIInterface, MutHandler, Prompt,
+    tools::translator::{translate, TargetLang, TranslateRequest},
+    AIError, Conversation, GenerativeAIInterface, Handler, MutHandler, Prompt,
 };
 use clap::{Parser, Subcommand};
 
@@ -31,6 +32,18 @@ impl Cli {
             } => {
                 self.ask(engine.to_string(), question.to_string(), role_play.clone())
                     .await
+            }
+            SubCommand::Translate {
+                source,
+                target_lang,
+                engine,
+            } => {
+                self.translate(
+                    engine.to_string(),
+                    source.to_string(),
+                    target_lang.to_string(),
+                )
+                .await
             }
             SubCommand::CodeReview { engine, path } => {
                 self.code_review(engine.to_string(), path.to_string()).await
@@ -76,6 +89,25 @@ impl Cli {
         let mut printer = Printer::new();
         ai.run_mut(&mut printer, prompt).await
     }
+    async fn translate(
+        &self,
+        engine: String,
+        source: String,
+        target_lang: String,
+    ) -> Result<(), AIError> {
+        let key = engine_to_default_key_from_env(engine.as_str());
+        let ai = GAIEngines::from_str(&engine, key);
+        if target_lang == "ja" {
+            let request = TranslateRequest::new(source, TargetLang::Japanese);
+            let response = translate(ai, request).await?;
+            println!("{}", response.translated);
+        } else {
+            let request = TranslateRequest::new(source, TargetLang::English);
+            let response = translate(ai, request).await?;
+            println!("{}", response.translated);
+        }
+        Ok(())
+    }
     async fn ask(
         &self,
         engine: String,
@@ -118,6 +150,14 @@ enum SubCommand {
         #[clap(long = "engine", short = 'e', default_value = "gpt4-o-mini")]
         engine: String,
         path: String,
+    },
+    #[clap(name = "translate", alias = "t")]
+    Translate {
+        source: String,
+        #[clap(long = "target-lang", short = 't', default_value = "ja")]
+        target_lang: String,
+        #[clap(long = "engine", short = 'e', default_value = "gpt4-o-mini")]
+        engine: String,
     },
 }
 
@@ -164,6 +204,22 @@ macro_rules! gai_engine {
                     )*
                 }
 
+            }
+        }
+        impl GenerativeAIInterface for GAIEngines {
+            async fn request<H:Handler>(&self,prompt:Prompt,handler:&H)->Result<(),AIError> {
+                match &self {
+                    $(
+                        &GAIEngines::$name(t) => t.request(prompt,handler).await,
+                    )*
+                }
+            }
+            async fn request_mut<H:MutHandler>(&self,prompt:Prompt,handler:&mut H)->Result<(),AIError> {
+                match &self {
+                    $(
+                        &GAIEngines::$name(t) => t.request_mut(prompt,handler).await,
+                    )*
+                }
             }
         }
     }

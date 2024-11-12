@@ -1,6 +1,7 @@
 pub mod clients;
 pub mod handlers;
 pub mod sse;
+pub mod tools;
 
 pub trait GenerativeAIInterface {
     #[allow(async_fn_in_trait)]

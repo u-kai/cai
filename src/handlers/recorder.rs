@@ -12,6 +12,9 @@ impl Recorder {
     pub fn message(&self) -> &str {
         self.buf.as_str()
     }
+    pub fn take(self) -> String {
+        self.buf
+    }
 }
 
 impl MutHandler for Recorder {
