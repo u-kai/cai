@@ -4,7 +4,7 @@ use cai::{
         claude::ClaudeMessageClient, gemini::GeminiGenerateContent, openai::ChatCompletionsClient,
     },
     handlers::printer::Printer,
-    tools::translator::{translate, TargetLang, TranslateRequest},
+    tools::translator::{translate, TargetLang, TranslateRequests},
     AIError, Conversation, GenerativeAIInterface, Handler, MutHandler, Prompt,
 };
 use clap::{Parser, Subcommand};
@@ -98,13 +98,21 @@ impl Cli {
         let key = engine_to_default_key_from_env(engine.as_str());
         let ai = GAIEngines::from_str(&engine, key);
         if target_lang == "ja" {
-            let request = TranslateRequest::new(source, TargetLang::Japanese);
+            let request = TranslateRequests::new(source, TargetLang::Japanese)
+                .separate_per_limit(3)
+                .separators(vec!['.', '!', '?']);
             let response = translate(ai, request).await?;
-            println!("{}", response.translated);
+            for res in response {
+                println!("{}", res);
+            }
         } else {
-            let request = TranslateRequest::new(source, TargetLang::English);
+            let request = TranslateRequests::new(source, TargetLang::Japanese)
+                .separate_per_limit(3)
+                .separators(vec!['.', '!', '?']);
             let response = translate(ai, request).await?;
-            println!("{}", response.translated);
+            for res in response {
+                println!("{}", res);
+            }
         }
         Ok(())
     }

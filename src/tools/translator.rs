@@ -1,15 +1,26 @@
+use std::fmt::Display;
+
 use crate::{handlers::recorder::Recorder, AIError, GenerativeAIInterface, Prompt};
 
 pub async fn translate<AI: GenerativeAIInterface>(
     ai: AI,
+    request: TranslateRequests,
+) -> Result<Vec<TranslateResult>, AIError> {
+    let requests = request.to_requests();
+    let tasks = requests.into_iter().map(|req| translate_task(&ai, req));
+    Ok(futures::future::join_all(tasks)
+        .await
+        .into_iter()
+        .filter_map(|res| res.ok())
+        .collect())
+}
+
+async fn translate_task<AI: GenerativeAIInterface>(
+    ai: &AI,
     request: TranslateRequest,
 ) -> Result<TranslateResult, AIError> {
     let mut recorder = Recorder::new();
-    let prompts = request.to_prompts();
-    for prompt in prompts.iter() {
-        ai.request_mut(prompt.clone(), &mut recorder).await?;
-    }
-    ai.request_mut(prompts[0].clone(), &mut recorder).await?;
+    ai.request_mut(request.to_prompt(), &mut recorder).await?;
     Ok(TranslateResult {
         from: request,
         translated: recorder.take(),
@@ -17,11 +28,30 @@ pub async fn translate<AI: GenerativeAIInterface>(
 }
 
 pub struct TranslateResult {
-    pub from: TranslateRequest,
-    pub translated: String,
+    from: TranslateRequest,
+    translated: String,
+}
+impl Display for TranslateResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}\n{}", self.from.source, self.translated)
+    }
+}
+#[derive(Debug, PartialEq)]
+struct TranslateRequest {
+    source: String,
+    target_lang: TargetLang,
+}
+impl TranslateRequest {
+    fn to_prompt(&self) -> Prompt {
+        Prompt::ask(&format!(
+        "please translate '{}' to {}. you should answer only in the target language and result.",
+        self.source,
+        self.target_lang.to_str()
+    ))
+    }
 }
 
-pub struct TranslateRequest {
+pub struct TranslateRequests {
     source: String,
     // if you want to separate the source string by some characters, set them here.
     separators: Vec<char>,
@@ -32,7 +62,7 @@ pub struct TranslateRequest {
     target_lang: TargetLang,
 }
 
-impl TranslateRequest {
+impl TranslateRequests {
     pub fn new(source: String, target_lang: TargetLang) -> Self {
         Self {
             source,
@@ -50,9 +80,12 @@ impl TranslateRequest {
         self
     }
 
-    pub fn to_prompts(&self) -> Vec<Prompt> {
+    fn to_requests(self) -> Vec<TranslateRequest> {
         if self.separators.is_empty() {
-            return vec![translate_prompt(&self.source, self.target_lang)];
+            return vec![TranslateRequest {
+                source: self.source,
+                target_lang: self.target_lang,
+            }];
         }
         self.source
             .split_inclusive(|c| self.separators.contains(&c))
@@ -75,19 +108,15 @@ impl TranslateRequest {
                 acc
             })
             .into_iter()
-            .map(|sentence| translate_prompt(sentence.as_str(), self.target_lang))
+            .map(|sentence| TranslateRequest {
+                source: sentence,
+                target_lang: self.target_lang,
+            })
             .collect()
     }
 }
 
-fn translate_prompt(source: &str, target_lang: TargetLang) -> Prompt {
-    Prompt::ask(&format!(
-        "please translate '{}' to {}. you should answer only in the target language and result.",
-        source,
-        target_lang.to_str()
-    ))
-}
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TargetLang {
     English,
     Japanese,
@@ -106,21 +135,27 @@ mod tests {
     use super::*;
     #[test]
     fn translate_request_should_separate_source_string() {
-        let request = TranslateRequest::new(
+        let request = TranslateRequests::new(
             "hello, world! Are you okay?".to_string(),
             TargetLang::Japanese,
         )
         .separate_per_limit(2)
         .separators(vec![',', '?', '!']);
-        let prompts = request.to_prompts();
-        assert_eq!(prompts.len(), 2);
+        let requests = request.to_requests();
+        assert_eq!(requests.len(), 2);
         assert_eq!(
-            prompts[0],
-            translate_prompt("hello, world!", TargetLang::Japanese)
+            requests[0],
+            TranslateRequest {
+                source: "hello, world!".to_string(),
+                target_lang: TargetLang::Japanese
+            }
         );
         assert_eq!(
-            prompts[1],
-            translate_prompt("Are you okay?", TargetLang::Japanese)
+            requests[1],
+            TranslateRequest {
+                source: "Are you okay?".to_string(),
+                target_lang: TargetLang::Japanese
+            }
         );
     }
 }
