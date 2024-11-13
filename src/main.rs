@@ -37,11 +37,13 @@ impl Cli {
                 source,
                 target_lang,
                 engine,
+                separate_per_limit,
             } => {
                 self.translate(
                     engine.to_string(),
                     source.to_string(),
                     target_lang.to_string(),
+                    *separate_per_limit,
                 )
                 .await
             }
@@ -94,12 +96,13 @@ impl Cli {
         engine: String,
         source: String,
         target_lang: String,
+        separate_per_limit: usize,
     ) -> Result<(), AIError> {
         let key = engine_to_default_key_from_env(engine.as_str());
         let ai = GAIEngines::from_str(&engine, key);
         if target_lang == "ja" {
             let request = TranslateRequests::new(source, TargetLang::Japanese)
-                .separate_per_limit(3)
+                .separate_per_limit(separate_per_limit)
                 .separators(vec!['.', '!', '?']);
             let response = translate(ai, request).await?;
             for res in response {
@@ -166,6 +169,8 @@ enum SubCommand {
         target_lang: String,
         #[clap(long = "engine", short = 'e', default_value = "gpt4-o-mini")]
         engine: String,
+        #[clap(short = 'l', default_value = "1")]
+        separate_per_limit: usize,
     },
 }
 
