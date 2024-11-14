@@ -44,7 +44,7 @@ struct TranslateRequest {
 impl TranslateRequest {
     fn to_prompt(&self) -> Prompt {
         Prompt::ask(&format!(
-        "please translate '{}' to {}. you should answer only in the target language and result.",
+        "please translate '{}' to {}. you should answer only in the target language and result. If there is something like program code in the translation target, please ignore it and output it as is.",
         self.source,
         self.target_lang.to_str()
     ))
