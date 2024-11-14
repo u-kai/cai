@@ -100,7 +100,7 @@ impl Cli {
     ) -> Result<(), AIError> {
         let key = engine_to_default_key_from_env(engine.as_str());
         let ai = GAIEngines::from_str(&engine, key);
-        let separators = vec!['.', '!', '?', '\n'];
+        let separators = vec!['.', '!', '?'];
         if target_lang == "ja" {
             let request = TranslateRequests::new(source, TargetLang::Japanese)
                 .separate_per_limit(separate_per_limit)
