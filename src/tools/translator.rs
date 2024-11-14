@@ -99,10 +99,17 @@ impl TranslateRequests {
                 }
                 let last = acc.pop().unwrap();
                 let split_count = last.chars().filter(|c| self.separators.contains(c)).count();
+                // if the sentence not starts with a space, it should be concatenated with the last sentence.
+                // for example, "app.Backend" should be concatenated "app" and ".Backend"
+                if !sentence.starts_with(' ') {
+                    acc.push(format!("{}{}", last, sentence));
+                    return acc;
+                }
                 if split_count < self.separate_per_limit {
                     acc.push(format!("{}{}", last, sentence));
                 } else {
                     acc.push(last);
+                    // sentence is started with a space, so it should be trimmed.
                     acc.push(sentence.trim().to_string());
                 }
                 acc
@@ -133,6 +140,45 @@ impl TargetLang {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn translate_request_should_not_separate_separators_after_not_empty_char() {
+        let request = TranslateRequests::new(
+            "hello, world! Are you okay? app.NotSplit".to_string(),
+            TargetLang::Japanese,
+        )
+        .separate_per_limit(1)
+        .separators(vec![',', '?', '!', '.']);
+        let requests = request.to_requests();
+        assert_eq!(requests.len(), 4);
+        assert_eq!(
+            requests[0],
+            TranslateRequest {
+                source: "hello,".to_string(),
+                target_lang: TargetLang::Japanese
+            },
+        );
+        assert_eq!(
+            requests[1],
+            TranslateRequest {
+                source: "world!".to_string(),
+                target_lang: TargetLang::Japanese
+            },
+        );
+        assert_eq!(
+            requests[2],
+            TranslateRequest {
+                source: "Are you okay?".to_string(),
+                target_lang: TargetLang::Japanese
+            },
+        );
+        assert_eq!(
+            requests[3],
+            TranslateRequest {
+                source: "app.NotSplit".to_string(),
+                target_lang: TargetLang::Japanese
+            },
+        );
+    }
     #[test]
     fn translate_request_should_separate_source_string() {
         let request = TranslateRequests::new(
