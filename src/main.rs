@@ -100,18 +100,19 @@ impl Cli {
     ) -> Result<(), AIError> {
         let key = engine_to_default_key_from_env(engine.as_str());
         let ai = GAIEngines::from_str(&engine, key);
+        let separators = vec![',', '.', '!', '?', '\n'];
         if target_lang == "ja" {
             let request = TranslateRequests::new(source, TargetLang::Japanese)
                 .separate_per_limit(separate_per_limit)
-                .separators(vec!['.', '!', '?']);
+                .separators(separators);
             let response = translate(ai, request).await?;
             for res in response {
                 println!("{}", res);
             }
         } else {
-            let request = TranslateRequests::new(source, TargetLang::Japanese)
-                .separate_per_limit(3)
-                .separators(vec!['.', '!', '?']);
+            let request = TranslateRequests::new(source, TargetLang::English)
+                .separate_per_limit(separate_per_limit)
+                .separators(separators);
             let response = translate(ai, request).await?;
             for res in response {
                 println!("{}", res);
