@@ -1,56 +1,26 @@
-use std::{
-    cell::RefCell,
-    fs::File,
-    io::{Stdout, Write},
-    path::Path,
-};
+use std::io::Write;
 
 use anyhow::Context;
 
 use crate::{Handler, HandlerError, MutHandler};
 
-pub struct Printer<W: Write> {
-    writer: RefCell<W>,
-}
+pub struct Printer {}
 
-impl Printer<Stdout> {
+impl Printer {
     pub fn new() -> Self {
-        Self {
-            writer: RefCell::new(std::io::stdout()),
-        }
-    }
-}
-impl Printer<File> {
-    pub fn new_file(path: impl AsRef<Path>) -> Self {
-        let file = File::create(path).expect("Failed to create file");
-        Self {
-            writer: RefCell::new(file),
-        }
-    }
-    pub fn open_file(path: impl AsRef<Path>) -> Self {
-        let file = File::open(path).expect("Failed to open file");
-        Self {
-            writer: RefCell::new(file),
-        }
+        Self {}
     }
 }
 
-impl<W: Write> Handler for Printer<W> {
+impl Handler for Printer {
     async fn handle(&self, resp: &str) -> Result<(), HandlerError> {
-        // こっちの方が滑らか
         print!("{}", resp);
-        std::io::stdout()
+        Ok(std::io::stdout()
             .flush()
-            .context("Failed to flush stdout")
-            .map_err(HandlerError)
-        // self.writer
-        //     .borrow_mut()
-        //     .write_all(resp.as_bytes())
-        //     .context("Failed to write to stdout")
-        //     .map_err(HandlerError)
+            .context("Failed to flush stdout")?)
     }
 }
-impl<W: Write> MutHandler for Printer<W> {
+impl MutHandler for Printer {
     async fn handle_mut(&mut self, resp: &str) -> Result<(), HandlerError> {
         self.handle(resp).await
     }

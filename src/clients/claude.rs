@@ -1,6 +1,6 @@
 use anyhow::Context;
 
-use crate::{sse::SseClient, AIError, GenerativeAIInterface, Prompt};
+use crate::{sse::SseClient, GenerativeAIInterface, Prompt};
 
 pub struct ClaudeMessageClient {
     inner: SseClient,
@@ -56,26 +56,24 @@ impl GenerativeAIInterface for ClaudeMessageClient {
                 return Ok(());
             };
 
-            handler
+            Ok(handler
                 .handle(resp.into_string().as_str())
                 .await
-                .context("Failed to handle response")
-                .map_err(crate::sse::SseHandlerError::from)
+                .context("Failed to handle response")?)
         };
 
-        self.inner
+        Ok(self
+            .inner
             .post()
             .header("anthropic-version", "2023-06-01")
             .header("x-api-key", self.api_key.as_str())
             .json(&ClaudeMessageRequest::new(self.model, prompt))
             .request()
             .await
-            .context("Failed to request")
-            .map_err(AIError)?
+            .context("Failed to request")?
             .handle_stream(&f)
             .await
-            .with_context(|| "Failed to handle stream")
-            .map_err(AIError)
+            .with_context(|| "Failed to handle stream")?)
     }
     async fn request_mut<H: crate::MutHandler>(
         &self,
@@ -95,19 +93,18 @@ impl GenerativeAIInterface for ClaudeMessageClient {
             Ok(resp.into_string())
         };
 
-        self.inner
+        Ok(self
+            .inner
             .post()
             .header("anthropic-version", "2023-06-01")
             .header("x-api-key", self.api_key.as_str())
             .json(&ClaudeMessageRequest::new(self.model, prompt))
             .request()
             .await
-            .context("Failed to request")
-            .map_err(AIError)?
+            .context("Failed to request")?
             .handle_mut_stream_use_convert(f, handler)
             .await
-            .with_context(|| "Failed to handle stream")
-            .map_err(AIError)
+            .with_context(|| "Failed to handle stream")?)
     }
 }
 

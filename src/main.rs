@@ -128,8 +128,8 @@ impl Cli {
     ) -> Result<(), AIError> {
         let key = engine_to_default_key_from_env(engine.as_str());
         let ai = GAIEngines::from_str(&engine, key);
-        let prompt = if role_play.is_some() {
-            Prompt::ask_with_role_play(question.as_str(), role_play.unwrap().as_str())
+        let prompt = if let Some(role_play) = role_play {
+            Prompt::ask_with_role_play(question.as_str(), role_play.as_str())
                 .replace_messages(replace_remote_path_to_content)
                 .replace_messages(replace_paths_to_content)
         } else {
@@ -175,13 +175,13 @@ enum SubCommand {
     },
 }
 
-impl Into<Conversation> for ConversationInput {
-    fn into(self) -> Conversation {
+impl From<ConversationInput> for Conversation {
+    fn from(input: ConversationInput) -> Conversation {
         let mut conversation = Conversation::new();
-        for json in self.0 {
-            match json.role {
-                Role::AI => conversation.add_ai_message(json.comment.as_str()),
-                Role::User => conversation.add_user_message(json.comment.as_str()),
+        for message in input.0 {
+            match message.role {
+                Role::AI => conversation.add_ai_message(&message.comment),
+                Role::User => conversation.add_user_message(&message.comment),
             }
         }
         conversation
@@ -315,7 +315,7 @@ fn replace_remote_path_to_content(message: String) -> String {
             let content = content.text().unwrap_or_else(|_| "".to_string());
             let path = format!("[{}]", path.as_str());
 
-            message = message.replace(&path, format!("{}", content).as_str());
+            message = message.replace(&path, content.as_str());
             message
         })
 }

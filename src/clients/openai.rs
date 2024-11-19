@@ -1,5 +1,6 @@
 use anyhow::Context;
 
+use crate::sse::SseResponse;
 use crate::AIError;
 use crate::{sse::SseClient, GenerativeAIInterface, Prompt};
 
@@ -63,32 +64,29 @@ impl GenerativeAIInterface for ChatCompletionsClient {
             };
 
             let resp = ChatResponse::try_from(data.as_str())
-                .with_context(|| format!("Failed to parse response: {}", data.as_str()))
-                .map_err(SseHandlerError::from)?;
+                .with_context(|| format!("Failed to parse response: {}", data.as_str()))?;
 
             let resp = match resp {
                 ChatResponse::Done => return Ok(()),
                 ChatResponse::DeltaContent(content) => content,
             };
 
-            handler
+            Ok(handler
                 .handle(resp.as_str())
                 .await
-                .with_context(|| format!("Failed to handle response: {}", resp.as_str()))
-                .map_err(SseHandlerError::from)
+                .with_context(|| format!("Failed to handle response: {}", resp.as_str()))?)
         };
-        self.inner
+        Ok(self
+            .inner
             .post()
             .bearer_auth(&self.api_key)
             .json(request)
             .request()
             .await
-            .context("Failed to request")
-            .map_err(AIError)?
+            .context("Failed to request")?
             .handle_stream(&f)
             .await
-            .with_context(|| "Failed to handle stream")
-            .map_err(AIError)
+            .with_context(|| "Failed to handle stream")?)
     }
 
     async fn request_mut<H: crate::MutHandler>(
@@ -107,8 +105,7 @@ impl GenerativeAIInterface for ChatCompletionsClient {
                 _ => return Ok(String::new()),
             };
             let resp = ChatResponse::try_from(data.as_str())
-                .with_context(|| format!("Failed to parse response: {}", data.as_str()))
-                .map_err(SseHandleStreamError::from)?;
+                .with_context(|| format!("Failed to parse response: {}", data.as_str()))?;
             let resp = match resp {
                 ChatResponse::Done => return Ok(String::new()),
                 ChatResponse::DeltaContent(content) => content,
@@ -116,18 +113,17 @@ impl GenerativeAIInterface for ChatCompletionsClient {
             Ok(resp)
         };
 
-        self.inner
+        Ok(self
+            .inner
             .post()
             .bearer_auth(&self.api_key)
             .json(request)
             .request()
             .await
-            .context("Failed to request")
-            .map_err(AIError::from)?
+            .context("Failed to request")?
             .handle_mut_stream_use_convert(f, handler)
             .await
-            .with_context(|| "Failed to handle stream")
-            .map_err(AIError::from)
+            .with_context(|| "Failed to handle stream")?)
     }
 }
 
@@ -210,8 +206,6 @@ impl TryFrom<&str> for ChatResponse {
         Ok(resp.into())
     }
 }
-
-use crate::sse::{SseHandleStreamError, SseHandlerError, SseResponse};
 
 #[derive(Debug, Clone, serde::Deserialize)]
 #[allow(dead_code)]

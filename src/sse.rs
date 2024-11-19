@@ -82,8 +82,7 @@ impl Response {
             .next()
             .await
             .transpose()
-            .context("Failed to read stream")
-            .map_err(SseHandleStreamError)?
+            .context("Failed to read stream")?
         {
             let s = std::str::from_utf8(&bytes);
             match s {
@@ -95,11 +94,7 @@ impl Response {
                         continue;
                     };
                     for s in responses {
-                        handler
-                            .handle(s)
-                            .await
-                            .context("Failed to handle stream")
-                            .map_err(SseHandleStreamError)?;
+                        handler.handle(s).await.context("Failed to handle stream")?
                     }
                 }
                 Err(error) => {
@@ -138,8 +133,7 @@ impl Response {
                         handler
                             .handle_mut(s.as_str())
                             .await
-                            .context("Failed to handle stream")
-                            .map_err(SseHandleStreamError)?;
+                            .context("Failed to handle stream")?
                     }
                 }
                 Err(error) => {
@@ -168,11 +162,7 @@ impl Response {
                     };
 
                     for s in responses {
-                        handler
-                            .handle(s)
-                            .await
-                            .context("Failed to handle stream")
-                            .map_err(SseHandleStreamError)?;
+                        handler.handle(s).await.context("Failed to handle stream")?
                     }
                 }
                 Err(error) => {
@@ -555,9 +545,9 @@ mod tests {
             }
         }
     }
-    impl Into<&'static str> for OpenAIModel {
-        fn into(self) -> &'static str {
-            self.into_str()
+    impl From<OpenAIModel> for &'static str {
+        fn from(model: OpenAIModel) -> Self {
+            model.into_str()
         }
     }
     pub fn chatgpt_key() -> String {

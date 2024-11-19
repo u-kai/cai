@@ -2,7 +2,7 @@ use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    sse::{SseClient, SseHandleStreamError, SseResponse},
+    sse::{SseClient, SseResponse},
     AIError, GenerativeAIInterface, Handler, MutHandler, Prompt, Role,
 };
 
@@ -31,30 +31,27 @@ impl GenerativeAIInterface for GeminiGenerateContent {
             };
 
             let resp = serde_json::from_str::<GeminiResponse>(data.as_str())
-                .with_context(|| format!("Failed to parse response: {}", data.as_str()))
-                .map_err(crate::sse::SseHandlerError::from)?;
+                .with_context(|| format!("Failed to parse response: {}", data.as_str()))?;
 
             let content: String = resp.into();
 
-            handler
+            Ok(handler
                 .handle(content.as_str())
                 .await
-                .context("Failed to handle response")
-                .map_err(crate::sse::SseHandlerError::from)
+                .context("Failed to handle response")?)
         };
 
-        self.inner
+        Ok(self
+            .inner
             .post()
             .query(&[("key", self.api_key.as_str()), ("alt", "sse")])
             .json(&GeminiRequest::from(prompt))
             .request()
             .await
-            .context("Failed to request")
-            .map_err(AIError)?
+            .context("Failed to request")?
             .handle_stream(&f)
             .await
-            .with_context(|| "Failed to handle stream")
-            .map_err(AIError)
+            .with_context(|| "Failed to handle stream")?)
     }
 
     async fn request_mut<H: MutHandler>(
@@ -69,25 +66,23 @@ impl GenerativeAIInterface for GeminiGenerateContent {
             };
 
             let resp = serde_json::from_str::<GeminiResponse>(data.as_str())
-                .with_context(|| format!("Failed to parse response: {}", data.as_str()))
-                .map_err(SseHandleStreamError::from)?;
+                .with_context(|| format!("Failed to parse response: {}", data.as_str()))?;
 
             let content: String = resp.into();
             Ok(content)
         };
 
-        self.inner
+        Ok(self
+            .inner
             .post()
             .query(&[("key", self.api_key.as_str()), ("alt", "sse")])
             .json(&GeminiRequest::from(prompt))
             .request()
             .await
-            .context("Failed to request")
-            .map_err(AIError)?
+            .context("Failed to request")?
             .handle_mut_stream_use_convert(f, handler)
             .await
-            .with_context(|| "Failed to handle stream")
-            .map_err(AIError)
+            .with_context(|| "Failed to handle stream")?)
     }
 }
 
@@ -181,9 +176,10 @@ impl From<Role> for GeminiRole {
 pub struct GeminiResponse {
     candidates: Vec<GeminiResponseCandidate>,
 }
-impl Into<String> for GeminiResponse {
-    fn into(self) -> String {
-        self.candidates
+impl From<GeminiResponse> for String {
+    fn from(response: GeminiResponse) -> String {
+        response
+            .candidates
             .into_iter()
             .next()
             .map(|c| c.into())
@@ -194,9 +190,11 @@ impl Into<String> for GeminiResponse {
 pub struct GeminiResponseCandidate {
     content: GeminiContent,
 }
-impl Into<String> for GeminiResponseCandidate {
-    fn into(self) -> String {
-        self.content
+
+impl From<GeminiResponseCandidate> for String {
+    fn from(candidate: GeminiResponseCandidate) -> Self {
+        candidate
+            .content
             .parts
             .into_iter()
             .next()
