@@ -12,13 +12,18 @@ pub struct GeminiGenerateContent {
 }
 impl GeminiGenerateContent {
     const BASE_URL: &'static str = "https://generativelanguage.googleapis.com/v1beta/models/";
-    pub fn new(api_key: String) -> Self {
-        let model = GeminiModel::Gemini15Flash;
+    pub fn new(api_key: String, model: GeminiModel) -> Self {
         let url = format!("{}{}:streamGenerateContent", Self::BASE_URL, model.to_str());
         GeminiGenerateContent {
             inner: SseClient::new(url.as_str()),
             api_key,
         }
+    }
+    pub fn gemini_15_flash(api_key: String) -> Self {
+        Self::new(api_key, GeminiModel::Gemini15Flash)
+    }
+    pub fn gemini_2_flash_exp(api_key: String) -> Self {
+        Self::new(api_key, GeminiModel::Gemini2FlashExp)
     }
 }
 
@@ -88,11 +93,13 @@ impl GenerativeAIInterface for GeminiGenerateContent {
 
 pub enum GeminiModel {
     Gemini15Flash,
+    Gemini2FlashExp,
 }
 impl GeminiModel {
     pub fn to_str(&self) -> &'static str {
         match self {
             GeminiModel::Gemini15Flash => "gemini-1.5-flash",
+            GeminiModel::Gemini2FlashExp => "gemini-2.0-flash-exp",
         }
     }
 }

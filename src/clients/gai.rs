@@ -46,7 +46,12 @@ impl GAIEngines {
             "gpt4-o" => GAIEngines::Gpt4o(ChatCompletionsClient::gpt4o(key)),
             "gpt4-o-mini" => GAIEngines::Gpt4oMini(ChatCompletionsClient::gpt4o_mini(key)),
             "gpt3-5-turbo" => GAIEngines::Gpt3Dot5Turbo(ChatCompletionsClient::gpt3_5_turbo(key)),
-            "gemini" => GAIEngines::Gemini15Flash(GeminiGenerateContent::new(key)),
+            "gemini15flash" => {
+                GAIEngines::Gemini15Flash(GeminiGenerateContent::gemini_15_flash(key))
+            }
+            "gemini2flashexp" => {
+                GAIEngines::Gemini20FlashExp(GeminiGenerateContent::gemini_2_flash_exp(key))
+            }
             "claude3-haiku" => GAIEngines::Claude3Haiku(ClaudeMessageClient::haiku_3(key)),
             "claude3-ops" => GAIEngines::Claude3Ops(ClaudeMessageClient::ops_3(key)),
             "claude35-sonnet" => GAIEngines::Claude35Sonnet(ClaudeMessageClient::sonnet_3_5(key)),
@@ -75,6 +80,7 @@ gai_engine!(
     Gpt4oMini:ChatCompletionsClient,
     Gpt3Dot5Turbo:ChatCompletionsClient,
     Gemini15Flash:GeminiGenerateContent,
+    Gemini20FlashExp:GeminiGenerateContent,
     Claude3Haiku:ClaudeMessageClient,
     Claude3Ops:ClaudeMessageClient,
     Claude35Sonnet:ClaudeMessageClient,

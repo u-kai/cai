@@ -16,7 +16,7 @@ macro_rules! container_handler {
             }
         }
         impl Handler for Container {
-            async fn handle(&self, resp: &str) -> Result<(), HandlerError> {
+            async fn handle(&self, _: &str) -> Result<(), HandlerError> {
                 Ok(())
             }
         }
