@@ -4,38 +4,75 @@ use crate::sse::SseResponse;
 use crate::AIError;
 use crate::{sse::SseClient, GenerativeAIInterface, Prompt};
 
+pub struct GPTCompletionsClient {
+    client: reqwest::Client,
+    api_key: String,
+    model: ChatCompletionsModel,
+}
+impl GPTCompletionsClient {
+    pub fn new(api_key: String, model: ChatCompletionsModel) -> Self {
+        Self {
+            client: reqwest::Client::new(),
+            api_key,
+            model,
+        }
+    }
+    pub async fn request(&self, prompt: Prompt) -> Result<GPTResponse, AIError> {
+        let request = ChatRequest {
+            model: self.model,
+            messages: prompt.into(),
+            stream: false,
+        };
+        let body = serde_json::to_string(&request).context("Failed to serialize request")?;
+        let resp = self
+            .client
+            .post(URL)
+            .bearer_auth(&self.api_key)
+            .header("Content-Type", "application/json")
+            .body(body)
+            .send()
+            .await
+            .context("Failed to send request")?
+            .text()
+            .await
+            .context("Failed to get response text")?;
+
+        Ok(GPTResponse::try_from(resp.as_str()).context("Failed to parse response")?)
+    }
+}
+
 pub struct ChatCompletionsClient {
     inner: SseClient,
     api_key: String,
     model: ChatCompletionsModel,
 }
 
+const URL: &'static str = "https://api.openai.com/v1/chat/completions";
 impl ChatCompletionsClient {
-    const URL: &'static str = "https://api.openai.com/v1/chat/completions";
     pub fn gpt4(api_key: String) -> Self {
         ChatCompletionsClient {
-            inner: SseClient::new(Self::URL),
+            inner: SseClient::new(URL),
             api_key,
             model: ChatCompletionsModel::Gpt4,
         }
     }
     pub fn gpt4o(api_key: String) -> Self {
         ChatCompletionsClient {
-            inner: SseClient::new(Self::URL),
+            inner: SseClient::new(URL),
             api_key,
             model: ChatCompletionsModel::Gpt4o,
         }
     }
     pub fn gpt4o_mini(api_key: String) -> Self {
         ChatCompletionsClient {
-            inner: SseClient::new(Self::URL),
+            inner: SseClient::new(URL),
             api_key,
             model: ChatCompletionsModel::Gpt4oMini,
         }
     }
     pub fn gpt3_5_turbo(api_key: String) -> Self {
         ChatCompletionsClient {
-            inner: SseClient::new(Self::URL),
+            inner: SseClient::new(URL),
             api_key,
             model: ChatCompletionsModel::Gpt3Dot5Turbo,
         }
@@ -186,6 +223,43 @@ impl From<crate::Role> for Role {
     }
 }
 
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct GPTResponse {
+    #[allow(dead_code)]
+    id: String,
+    #[allow(dead_code)]
+    object: String,
+    #[allow(dead_code)]
+    created: usize,
+    #[allow(dead_code)]
+    model: String,
+    choices: Vec<GPTResponseChoices>,
+}
+impl GPTResponse {
+    pub fn content(mut self) -> String {
+        self.choices
+            .pop()
+            .map(|c| c.message.content)
+            .unwrap_or_else(|| "".to_string())
+    }
+}
+impl TryFrom<&str> for GPTResponse {
+    type Error = serde_json::Error;
+    fn try_from(stream: &str) -> Result<Self, Self::Error> {
+        serde_json::from_str(stream)
+    }
+}
+#[derive(Debug, Clone, serde::Deserialize)]
+struct GPTResponseChoices {
+    #[allow(dead_code)]
+    index: usize,
+    message: GPTResponseChoicesMessage,
+}
+#[derive(Debug, Clone, serde::Deserialize)]
+struct GPTResponseChoicesMessage {
+    content: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChatResponse {
     Done,
@@ -293,7 +367,6 @@ mod tests {
             let (has_received, received) = result.await.unwrap();
             assert!(has_received);
             assert!(!received.is_empty());
-            println!("Received: {}", received);
         }
     }
 }

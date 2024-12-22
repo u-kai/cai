@@ -6,14 +6,61 @@ use crate::{
     AIError, GenerativeAIInterface, Handler, MutHandler, Prompt, Role,
 };
 
+struct GeminiURL {
+    model: GeminiModel,
+}
+impl GeminiURL {
+    const BASE_URL: &'static str = "https://generativelanguage.googleapis.com/v1beta/models/";
+    fn new(model: GeminiModel) -> Self {
+        GeminiURL { model }
+    }
+    fn to_generate_content(&self) -> String {
+        format!("{}{}:generateContent", Self::BASE_URL, self.model.to_str())
+    }
+}
+
+pub struct GeminiAPIClient {
+    client: reqwest::Client,
+    api_key: String,
+    model: GeminiModel,
+}
+impl GeminiAPIClient {
+    pub fn new(api_key: String, model: GeminiModel) -> Self {
+        Self {
+            client: reqwest::Client::new(),
+            api_key,
+            model,
+        }
+    }
+    pub async fn request(&self, prompt: Prompt) -> Result<GeminiResponse, AIError> {
+        let url = GeminiURL::new(self.model);
+        let resp = self
+            .client
+            .post(url.to_generate_content().as_str())
+            .query(&[("key", self.api_key.as_str())])
+            .body(
+                serde_json::to_string(&GeminiRequest::from(prompt))
+                    .context("Failed to serialize request")?,
+            )
+            .send()
+            .await
+            .context("Failed to send request")?
+            .text()
+            .await
+            .context("Failed to get response text")?;
+        let resp = serde_json::from_str::<GeminiResponse>(resp.as_str())
+            .context("Failed to parse response")?;
+        Ok(resp)
+    }
+}
+
 pub struct GeminiGenerateContent {
     inner: SseClient,
     api_key: String,
 }
 impl GeminiGenerateContent {
-    const BASE_URL: &'static str = "https://generativelanguage.googleapis.com/v1beta/models/";
-    pub fn new(api_key: String, model: GeminiModel) -> Self {
-        let url = format!("{}{}:streamGenerateContent", Self::BASE_URL, model.to_str());
+    fn new(api_key: String, model: GeminiModel) -> Self {
+        let url = GeminiURL::new(model).to_generate_content();
         GeminiGenerateContent {
             inner: SseClient::new(url.as_str()),
             api_key,
@@ -91,6 +138,7 @@ impl GenerativeAIInterface for GeminiGenerateContent {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum GeminiModel {
     Gemini15Flash,
     Gemini2FlashExp,
@@ -227,7 +275,8 @@ mod tests {
             )
             .with(tracing_subscriber::fmt::layer())
             .init();
-        let client = GeminiGenerateContent::new(std::env::var("GEMINI_API_KEY").unwrap());
+        let client =
+            GeminiGenerateContent::gemini_15_flash(std::env::var("GEMINI_API_KEY").unwrap());
         let prompt = Prompt::ask("What is the meaning of life?");
         let handler = MockHandler::new();
         client.request(prompt, &handler).await.unwrap();
@@ -239,7 +288,6 @@ mod tests {
         let mut handler = MockHandler::new();
 
         client.request_mut(prompt, &mut handler).await.unwrap();
-        println!("Received: {}", handler.received);
         assert!(handler.has_received);
     }
 }

@@ -241,7 +241,6 @@ mod tests {
 
         client.request_mut(prompt, &mut handler).await.unwrap();
 
-        println!("Received{:?}", handler.received);
         assert!(handler.has_received);
     }
 }

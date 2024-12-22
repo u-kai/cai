@@ -1,10 +1,13 @@
-use actix_web::{web::Json, FromRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{web::Json, HttpResponse, HttpServer, Responder};
 
 use crate::{
-    clients::gai::{engine_to_default_key_from_env, GAIEngines},
+    clients::{
+        gai::{engine_to_default_key_from_env, GAIEngines},
+        gemini::GeminiAPIClient,
+        openai::GPTCompletionsClient,
+    },
     container_handler,
-    handlers::printer::Printer,
-    handlers::recorder::Recorder,
+    handlers::{printer::Printer, recorder::Recorder},
     GenerativeAIInterface, Handler, HandlerError, MutHandler, Prompt,
 };
 
@@ -41,18 +44,42 @@ impl AIServer {
 
 #[actix_web::post("/")]
 async fn request_to(body: Json<PromptRequest>) -> impl Responder {
-    let res = handle_prompt::<Response>("gemini2flashexp", &body.prompt).await;
-    HttpResponse::Ok().body(serde_json::to_string(&res).unwrap())
+    let client = GeminiAPIClient::new(
+        engine_to_default_key_from_env("gemini2flashexp"),
+        crate::clients::gemini::GeminiModel::Gemini2FlashExp,
+    );
+    let prompt = Prompt::ask(body.prompt.as_str());
+    let resp = client.request(prompt).await.unwrap();
+    let resp = Response {
+        result: resp.into(),
+    };
+    HttpResponse::Ok().body(serde_json::to_string(&resp).unwrap())
 }
 #[actix_web::post("/gemini2flashexp")]
 async fn request_to_gemini2(body: Json<PromptRequest>) -> impl Responder {
-    let res = handle_prompt::<Response>("gemini2flashexp", &body.prompt).await;
-    HttpResponse::Ok().body(serde_json::to_string(&res).unwrap())
+    let client = GeminiAPIClient::new(
+        engine_to_default_key_from_env("gemini2flashexp"),
+        crate::clients::gemini::GeminiModel::Gemini2FlashExp,
+    );
+    let prompt = Prompt::ask(body.prompt.as_str());
+    let resp = client.request(prompt).await.unwrap();
+    let resp = Response {
+        result: resp.into(),
+    };
+    HttpResponse::Ok().body(serde_json::to_string(&resp).unwrap())
 }
 #[actix_web::post("/gpt4o-mini")]
 async fn request_to_gpt4omini(body: Json<PromptRequest>) -> impl Responder {
-    let res = handle_prompt::<Response>("gpt4-o-mini", &body.prompt).await;
-    HttpResponse::Ok().body(serde_json::to_string(&res).unwrap())
+    let client = GPTCompletionsClient::new(
+        engine_to_default_key_from_env("gpt4o-mini"),
+        crate::clients::openai::ChatCompletionsModel::Gpt4oMini,
+    );
+    let prompt = Prompt::ask(body.prompt.as_str());
+    let resp = client.request(prompt).await.unwrap();
+    let resp = Response {
+        result: resp.content(),
+    };
+    HttpResponse::Ok().body(serde_json::to_string(&resp).unwrap())
 }
 
 #[actix_web::post("/gemini15flash")]

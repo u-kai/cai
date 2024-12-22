@@ -21,8 +21,7 @@ pub mod mocks {
         }
     }
     impl Handler for MockHandler {
-        async fn handle(&self, stream: &str) -> Result<(), HandlerError> {
-            println!("Received: {}", stream);
+        async fn handle(&self, _: &str) -> Result<(), HandlerError> {
             Ok(())
         }
     }
