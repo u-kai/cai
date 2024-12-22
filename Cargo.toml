@@ -16,3 +16,4 @@ anyhow = { version = "1.0.70", features = ["backtrace", "std"] }
 clap={version="4.0",features=["derive"]}
 regex = "1.5"
 futures = "0.3.31"
+actix-web = "4"
