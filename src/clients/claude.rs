@@ -1,6 +1,6 @@
 use anyhow::Context;
 
-use crate::{sse::SseClient, GenerativeAIInterface, Prompt};
+use crate::{GenerativeAIInterface, Prompt, sse::SseClient};
 
 pub struct ClaudeMessageClient {
     inner: SseClient,
@@ -220,7 +220,7 @@ pub struct ClaudeMessageStreamResponseDelta {
 
 #[cfg(test)]
 mod tests {
-    use crate::{clients::mocks::MockHandler, Prompt};
+    use crate::{Prompt, clients::mocks::MockHandler};
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
     use super::*;

@@ -1,10 +1,10 @@
 use anyhow::Context;
 use cai::{
-    clients::gai::{engine_to_default_key_from_env, GAIEngines},
+    AIError, Conversation, Prompt,
+    clients::gai::{GAIEngines, engine_to_default_key_from_env},
     handlers::printer::Printer,
     server::AIServer,
-    tools::translator::{translate, TargetLang, TranslateRequests},
-    AIError, Conversation, Prompt,
+    tools::translator::{TargetLang, TranslateRequests, translate},
 };
 use clap::{Parser, Subcommand};
 
@@ -255,7 +255,7 @@ fn replace_remote_path_to_content(message: String) -> String {
 #[cfg(test)]
 mod tests {
     use std::{
-        fs::{remove_file, File},
+        fs::{File, remove_file},
         io::Write,
     };
 

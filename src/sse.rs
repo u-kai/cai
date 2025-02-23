@@ -2,7 +2,7 @@ use anyhow::Context;
 use std::future::Future;
 use tokio_stream::StreamExt as _;
 
-use crate::{impl_from_error, MutHandler};
+use crate::{MutHandler, impl_from_error};
 
 pub struct SseClient {
     url: String,

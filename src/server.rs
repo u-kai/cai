@@ -1,14 +1,14 @@
-use actix_web::{web::Json, HttpResponse, HttpServer, Responder};
+use actix_web::{HttpResponse, HttpServer, Responder, web::Json};
 
 use crate::{
+    GenerativeAIInterface, Handler, HandlerError, MutHandler, Prompt,
     clients::{
-        gai::{engine_to_default_key_from_env, GAIEngines},
+        gai::{GAIEngines, engine_to_default_key_from_env},
         gemini::GeminiAPIClient,
         openai::GPTCompletionsClient,
     },
     container_handler,
     handlers::{printer::Printer, recorder::Recorder},
-    GenerativeAIInterface, Handler, HandlerError, MutHandler, Prompt,
 };
 
 pub struct AIServer {

@@ -1,8 +1,8 @@
 use anyhow::Context;
 
-use crate::sse::SseResponse;
 use crate::AIError;
-use crate::{sse::SseClient, GenerativeAIInterface, Prompt};
+use crate::sse::SseResponse;
+use crate::{GenerativeAIInterface, Prompt, sse::SseClient};
 
 pub struct GPTCompletionsClient {
     client: reqwest::Client,
@@ -330,7 +330,7 @@ mod tests {
 
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-    use crate::{clients::mocks::MockHandler, Conversation, Prompt};
+    use crate::{Conversation, Prompt, clients::mocks::MockHandler};
 
     use super::*;
     #[tokio::test]

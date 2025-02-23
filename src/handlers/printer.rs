@@ -28,7 +28,7 @@ impl MutHandler for Printer {
 
 #[cfg(test)]
 mod tests {
-    use crate::{clients::openai::ChatCompletionsClient, Ask, GenerativeAIInterface, Prompt};
+    use crate::{Ask, GenerativeAIInterface, Prompt, clients::openai::ChatCompletionsClient};
 
     use super::*;
 

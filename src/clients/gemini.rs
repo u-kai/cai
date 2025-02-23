@@ -2,8 +2,8 @@ use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    sse::{SseClient, SseResponse},
     AIError, GenerativeAIInterface, Handler, MutHandler, Prompt, Role,
+    sse::{SseClient, SseResponse},
 };
 
 struct GeminiURL {
@@ -262,7 +262,7 @@ impl From<GeminiResponseCandidate> for String {
 mod tests {
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-    use crate::{clients::mocks::MockHandler, Conversation, Prompt};
+    use crate::{Conversation, Prompt, clients::mocks::MockHandler};
 
     use super::*;
     #[ignore]
